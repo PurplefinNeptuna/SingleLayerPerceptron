@@ -15,9 +15,9 @@ https://github.com/vincentlaucsb/csv-parser
 #include <bits/stdc++.h>
 using namespace std;
 
-typedef tuple<double, double, double, double, double> trainData;
+typedef tuple<double, double, double, double, double> ddddd;
 typedef tuple<double, double> dd;
-typedef vector<trainData> tArray;
+typedef vector<ddddd> vddddd;
 
 template <class S, class T>
 tuple<S, T> operator+(const tuple<S, T>& lhs, const tuple<S, T>& rhs) {
@@ -29,7 +29,7 @@ tuple<S, T> operator/(const tuple<S, T>& lhs, const double& rhs) {
 	return make_tuple(get<0>(lhs) / rhs, get<1>(lhs) / rhs);
 }
 
-tArray csvdata;
+vddddd csvdata;
 double learningRate = 0.1;
 int kFold = 5;
 int epoch = 300;
@@ -122,7 +122,7 @@ dd runEpoch(double& w1, double& w2, double& w3, double& w4, double& b, int bv, i
 }
 
 double train(int idx, double& w1, double& w2, double& w3, double& w4, double& b) {
-	trainData datai = csvdata[idx];
+	ddddd datai = csvdata[idx];
 	double y = get<0>(datai) * w1 + get<1>(datai) * w2 + get<2>(datai) * w3 + get<3>(datai) * w4 + b;
 	double g = (double)1.0 / (1.0 + exp(-y));
 	double dw1 = 2.0 * (g - get<4>(datai)) * g * (1.0 - g) * get<0>(datai);
@@ -146,7 +146,7 @@ double validation(double w1, double w2, double w3, double w4, double b, int bv, 
 	tp = tn = fp = fn = 0;
 
 	for (int i = bv; i < ev; i++) {
-		trainData datai = csvdata[i];
+		ddddd datai = csvdata[i];
 		double y = get<0>(datai) * w1 + get<1>(datai) * w2 + get<2>(datai) * w3 + get<3>(datai) * w4 + b;
 		double g = (double)1 / (1 + exp(-y));
 		double p = (g >= 0.5) ? 1.0 : 0.0;
