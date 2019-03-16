@@ -9,9 +9,9 @@ CSV writer (csv_writer.h) source code:
 https://github.com/vincentlaucsb/csv-parser
 */
 
+#include "graph_helper.hpp"
 #include "lib/csv.h"
 #include "lib/csv_writer.hpp"
-#include "graph_helper.hpp"
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -29,14 +29,14 @@ tuple<S, T> operator/(const tuple<S, T>& lhs, const double& rhs) {
 	return make_tuple(get<0>(lhs) / rhs, get<1>(lhs) / rhs);
 }
 
+dd runEpoch(double& w1, double& w2, double& w3, double& w4, double& b, int bv, int ev, int fold, int maxFold, double lrate, int epochNum);
+double train(int idx, double& w1, double& w2, double& w3, double& w4, double& b, double lrate);
+double validation(double w1, double w2, double w3, double w4, double b, int bv, int ev, int maxFold);
+void slpRun(double lrate, int maxFold, int maxEpoch);
+
 vddddd csvdata;
-double learningRate = 0.1;
 int kFold = 5;
 int epoch = 300;
-
-dd runEpoch(double& w1, double& w2, double& w3, double& w4, double& b, int bv, int ev, int fold, int epochNum);
-double train(int idx, double& w1, double& w2, double& w3, double& w4, double& b);
-double validation(double w1, double w2, double w3, double w4, double b, int bv, int ev);
 
 int main() {
 	double x1, x2, x3, x4, y;
@@ -46,8 +46,19 @@ int main() {
 		csvdata.push_back(make_tuple(x1, x2, x3, x4, y));
 	}
 
+	slpRun(0.1, kFold, epoch);
+	slpRun(0.8, kFold, epoch);
+
+	getchar();
+}
+
+void slpRun(double lrate, int maxFold, int maxEpoch) {
+	char cname[255];
+	sprintf(cname, "%.1lf", lrate);
+	string lrateName = string(cname);
+
 	vector<dd> resultGraphData;
-	for (int i = 0; i < epoch; i++) {
+	for (int i = 0; i < maxEpoch; i++) {
 		resultGraphData.push_back(make_tuple(0.0, 0.0));
 	}
 
@@ -61,7 +72,7 @@ int main() {
 	double iw4 = unif(re);
 	double ib = unif(re);
 
-	for (int i = 0; i < kFold; i++) {
+	for (int i = 0; i < maxFold; i++) {
 		double w1, w2, w3, w4, b;
 		w1 = iw1;
 		w2 = iw2;
@@ -70,33 +81,31 @@ int main() {
 		b = ib;
 
 		int beginv, endv;
-		beginv = i * (csvdata.size() / kFold);
-		endv = beginv + (csvdata.size() / kFold);
+		beginv = i * (csvdata.size() / maxFold);
+		endv = beginv + (csvdata.size() / maxFold);
 
-		for (int j = 0; j < epoch; j++) {
-			dd epochResult = runEpoch(w1, w2, w3, w4, b, beginv, endv, i, j);
-			resultGraphData[j] = resultGraphData[j] + (epochResult / (double)kFold);
+		for (int j = 0; j < maxEpoch; j++) {
+			dd epochResult = runEpoch(w1, w2, w3, w4, b, beginv, endv, i, maxFold, lrate, j);
+			resultGraphData[j] = resultGraphData[j] + (epochResult / (double)maxFold);
 		}
 	}
 
 	vector<double> errx, erry, accx, accy;
-	for (int i = 0; i < epoch; i++) {
+	for (int i = 0; i < maxEpoch; i++) {
 		errx.push_back(i);
 		accx.push_back(i);
 		erry.push_back(get<0>(resultGraphData[i]));
 		accy.push_back(get<1>(resultGraphData[i]));
 	}
 
-	string errName = "error", errTitle = "Error per epoch", errStyle = "lw 3", errColor = "#FF0000";
-	buildGraph(errName, errx, erry, false, true, -10, epoch + 10, 0, 0, errTitle, errStyle, errColor);
+	string errName = "error " + lrateName, errTitle = "Error/epoch (lr=" + lrateName + ")", errStyle = "lw 3", errColor = "#FF0000";
+	buildGraph(errName, errx, erry, false, true, -10, maxEpoch + 10, 0, 0, errTitle, errStyle, errColor);
 
-	string accName = "accuracy", accTitle = "Accuracy per epoch", accStyle = "lw 3", accColor = "#0000FF";
-	buildGraph(accName, accx, accy, false, false, -10, epoch + 10, 0, 1.05, accTitle, accStyle, accColor);
-
-	getchar();
+	string accName = "accuracy " + lrateName, accTitle = "Accuracy/epoch (lr=" + lrateName + ")", accStyle = "lw 3", accColor = "#0000FF";
+	buildGraph(accName, accx, accy, false, false, -10, maxEpoch + 10, 0, 1.05, accTitle, accStyle, accColor);
 }
 
-dd runEpoch(double& w1, double& w2, double& w3, double& w4, double& b, int bv, int ev, int fold, int epochNum) {
+dd runEpoch(double& w1, double& w2, double& w3, double& w4, double& b, int bv, int ev, int fold, int maxFold, double lrate, int epochNum) {
 	double err = 0.0;
 	double ew1, ew2, ew3, ew4, eb;
 	ew1 = w1;
@@ -105,12 +114,12 @@ dd runEpoch(double& w1, double& w2, double& w3, double& w4, double& b, int bv, i
 	ew4 = w4;
 	eb = b;
 	for (int i = 0; i < bv; i++) {
-		err += train(i, ew1, ew2, ew3, ew4, eb);
+		err += train(i, ew1, ew2, ew3, ew4, eb, lrate);
 	}
 	for (int i = ev; i < csvdata.size(); i++) {
-		err += train(i, ew1, ew2, ew3, ew4, eb);
+		err += train(i, ew1, ew2, ew3, ew4, eb, lrate);
 	}
-	double acc = validation(ew1, ew2, ew3, ew4, eb, bv, ev);
+	double acc = validation(ew1, ew2, ew3, ew4, eb, bv, ev, maxFold);
 	w1 = ew1;
 	w2 = ew2;
 	w3 = ew3;
@@ -118,10 +127,10 @@ dd runEpoch(double& w1, double& w2, double& w3, double& w4, double& b, int bv, i
 	b = eb;
 
 	//printf("fold %d, epoch %d -> err: %lf acc: %lf\n", fold, epochNum, err, acc);
-	return make_tuple(err / (double(csvdata.size()) - double(csvdata.size() / kFold)), acc);
+	return make_tuple(err / (double(csvdata.size()) - double(csvdata.size() / maxFold)), acc);
 }
 
-double train(int idx, double& w1, double& w2, double& w3, double& w4, double& b) {
+double train(int idx, double& w1, double& w2, double& w3, double& w4, double& b, double lrate) {
 	ddddd datai = csvdata[idx];
 	double y = get<0>(datai) * w1 + get<1>(datai) * w2 + get<2>(datai) * w3 + get<3>(datai) * w4 + b;
 	double g = (double)1.0 / (1.0 + exp(-y));
@@ -130,18 +139,18 @@ double train(int idx, double& w1, double& w2, double& w3, double& w4, double& b)
 	double dw3 = 2.0 * (g - get<4>(datai)) * g * (1.0 - g) * get<2>(datai);
 	double dw4 = 2.0 * (g - get<4>(datai)) * g * (1.0 - g) * get<3>(datai);
 	double db = 2.0 * (g - get<4>(datai)) * g * (1.0 - g);
-	w1 -= (learningRate * dw1);
-	w2 -= (learningRate * dw2);
-	w3 -= (learningRate * dw3);
-	w4 -= (learningRate * dw4);
-	b -= (learningRate * db);
+	w1 -= (lrate * dw1);
+	w2 -= (lrate * dw2);
+	w3 -= (lrate * dw3);
+	w4 -= (lrate * dw4);
+	b -= (lrate * db);
 	double error = (get<4>(datai) - g) * (get<4>(datai) - g);
 	//printf("data %d, activation: %lf error: %lf\n", idx, g, error);
 
 	return error;
 }
 
-double validation(double w1, double w2, double w3, double w4, double b, int bv, int ev) {
+double validation(double w1, double w2, double w3, double w4, double b, int bv, int ev, int maxFold) {
 	int tp, tn, fp, fn;
 	tp = tn = fp = fn = 0;
 
@@ -161,5 +170,5 @@ double validation(double w1, double w2, double w3, double w4, double b, int bv, 
 			fn++;
 	}
 
-	return double(tp + tn) / double(csvdata.size() / kFold);
+	return double(tp + tn) / double(csvdata.size() / maxFold);
 }
